@@ -1,2 +1,0 @@
-# Cleopatra
-Cosa mie 
