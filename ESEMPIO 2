@@ -1,0 +1,53 @@
+import pandas as pd
+import mysql.connector
+
+# Connessione al database
+cnx = mysql.connector.connect(user='superandreani', password='franzandreani',
+                              host='10.20.0.51', database='cinetel4', raise_on_warnings=True)
+cur = cnx.cursor()
+
+# Caricamento del file Excel
+df_excel = pd.read_excel('PERIODO CORRENTE MEDUSA.xls')
+
+# Estrazione dei dati dalla colonna 'Comune' del dataframe Excel
+comuni_excel = set(df_excel['Comune'].dropna().str.strip().tolist())
+
+# Estrazione dei dati dalla colonna 'citta' della tabella 'sala' del database
+cur.execute("SELECT citta FROM cinetel4.citta ORDER BY citta ASC")
+comuni_db = set([row[0].strip() for row in cur.fetchall()])
+
+# Confronto tra i comuni presenti nel file Excel e quelli presenti nel database
+comuni_diff_excel = comuni_excel - comuni_db
+comuni_diff_db = comuni_db - comuni_excel
+
+# Creazione dataframe dei comuni presenti solo nel file Excel
+if comuni_diff_excel:
+    df_excel_diff = pd.DataFrame(comuni_diff_excel, columns=['Comune Excel'])
+    df_excel_diff['Origin'] = 'Excel'
+else:
+    df_excel_diff = pd.DataFrame(columns=['Comune Excel', 'Origin'])
+
+# Creazione dataframe dei comuni presenti solo nel database
+if comuni_diff_db:
+    df_db_diff = pd.DataFrame(comuni_diff_db, columns=['Comune DB'])
+    df_db_diff['Origin'] = 'DB'
+else:
+    df_db_diff = pd.DataFrame(columns=['Comune DB', 'Origin'])
+
+# Unione dei dataframe df_excel_diff e df_db_diff
+df_final = pd.concat([df_excel_diff, df_db_diff], axis=0, ignore_index=True)
+
+# Creazione delle tabelle separate
+df_excel_only = df_final[df_final['Origin'] == 'Excel'].drop(columns='Origin')
+df_db_only = df_final[df_final['Origin'] == 'DB'].drop(columns='Origin')
+
+# Stampa delle tabelle separate
+print("Comuni presenti solo nel file Excel MA NON PRESENTI NEL DB:")
+print(df_excel_only.to_string(index=False))
+
+print("\nComuni presenti solo nel database MA ASSENTI NEL FILE EXCEL:")
+print(df_db_only.to_string(index=False))
+
+# Chiusura delle connessioni
+cur.close()
+cnx.close()
