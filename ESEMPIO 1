@@ -1,0 +1,297 @@
+import pandas as pd
+import mysql.connector
+from mysql.connector import errorcode
+from texttable import Texttable
+from prettytable import PrettyTable
+
+# Connessione al database
+#cnx = mysql.connector.connect(user='superandreani', password='franzandreani',host='10.20.0.51', database='cinetel4', raise_on_warnings=True)
+#cur = cnx.cursor()
+#print(cur)
+
+def connection():
+    try:
+        # README
+        # -> deploying with 'settings.DB_CONFIG'
+        # -> test locally with 'settings.DB_CONFIG_LOCAL'
+        cnx = mysql.connector.connect(user='superandreani', password='franzandreani',host='10.20.0.51', database='cinetel4', raise_on_warnings=True)
+        return cnx
+    except mysql.connector.Error as err:
+        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
+            print("Something is wrong with your user name or password")
+            return errorcode
+        elif err.errno == errorcode.ER_BAD_DB_ERROR:
+            print("Database does not exist")
+            return errorcode
+        else:
+            print(err)
+            return err
+
+
+# Caricamento del file Excel
+df_excel = pd.read_excel('Distinte_Periodo_10_Settembre-16_Settembre_2020.xls')  # Modifica il nome del file Excel in base al tuo file
+
+t = Texttable()
+
+
+def cerca_citta(citta):
+    # Esecuzione della prima query sul database per cercare i record presenti
+    query1 = "SELECT citta FROM cinetel4.citta WHERE citta=%s ORDER BY citta ASC;"  # Modifica il nome della tabella e delle colonne in base al tuo database
+    cnx = connection()
+    cur = cnx.cursor()
+    cur.execute(query1, [str(citta)])
+    result1 = cur.fetchall()
+
+
+    if not result1:
+        return 'Non è presente nel db ma è presente nel file Excel'
+    else:
+        return 'è presente nel db'
+
+
+def cerca_denominazione(denominazione):
+    # Esecuzione della prima query sul database per cercare i record presenti
+    query1 = "SELECT nome_cinema FROM cinetel4.anag_cinema WHERE nome_cinema = %s ORDER BY nome_cinema ASC ;"  # Modifica il nome della tabella e delle colonne in base al tuo database
+    cnx = connection()
+    cur = cnx.cursor()
+    cur.execute(query1, [str(denominazione)])
+    result1 = cur.fetchall()
+
+    if not result1:
+        return 'Il campo Denominazione non è presente nel db ma è presente nel file Excel'
+    else:
+        return 'Il campo Denominazione è presente nel db ma assente nel file Excel'
+
+
+def cerca_titolo(titolo):
+    # Esecuzione della prima query sul database per cercare i record presenti
+    query1 = "SELECT titolo FROM cinetel4.anagrafica_film WHERE titolo =%s ORDER BY titolo ASC ;"  # Modifica il nome della tabella e delle colonne in base al tuo database
+    cnx = connection()
+    cur = cnx.cursor()
+    cur.execute(query1, [str(titolo)])
+    result1 = cur.fetchall()
+
+    if not result1:
+        return 'Il campo Titolo non è presente nel db ma è presente nel file Excel'
+    else:
+        return 'Il campo Titolo è '
+
+
+import datetime
+
+import datetime
+
+
+def cerca_data(data):
+    # Converti la stringa di data nel formato corretto
+    data_corretta = datetime.datetime.strptime(data, '%d/%m/%Y').strftime('%Y-%m-%d')
+
+    # Esecuzione della prima query sul database per cercare i record presenti
+    query1 = "SELECT ultima_program FROM cinetel4.anagrafica_film WHERE ultima_program = %s ORDER BY ultima_program ;"
+    cnx = connection()
+    cur = cnx.cursor()
+    cur.execute(query1, [data_corretta])
+
+    result1 = cur.fetchall()
+
+    if not result1:
+        return 'Il campo Data non è presente nel db ma è presente nel file Excel'
+    else:
+        return 'Il campo Data è presente nel db ma assente nel file Excel'
+
+
+def cerca_capienza(capienza, denominazione):
+    cinema_name = denominazione.split(' - ')[0]  # prendi solo il nome del cinema
+    query1 = "SELECT * FROM cinetel4.anag_cinema WHERE nome_cinema LIKE %s AND SUBSTRING_INDEX(nome_cinema, '-', 1) = %s AND nome_cinema NOT LIKE '%-%' ORDER BY nome_cinema ASC;"
+    cnx = connection()
+    cur = cnx.cursor()
+    cur.execute(query1, [f'%{cinema_name}%', cinema_name])
+    result1 = cur.fetchall()
+
+    if not result1:
+        return 'Non è presente nel db ma è presente nel file Excel'
+    else:
+        for row in result1:
+            if row[2] == denominazione:  # controlla se la denominazione esatta corrisponde a quella nel DB
+                query2 = "select numero_posti from cinetel4.sale_attributi WHERE progress_cinema = %s;"
+                cur.execute(query2, [str(row[0])])
+                result2 = cur.fetchall()
+                if not result2:
+                    return '\nIl campo Capienza non è presente nel db ma è presente nel file Excel'
+                else:
+                    return '\nIl campo Capienza è presente nel db ma assente nel file Excel'
+        return 'Non è presente nel db ma è presente nel file Excel'  # se non c'è una corrispondenza esatta della denominazione nel DB
+
+
+def cerca_Affluenza_Totale(Affluenza_Totale):
+    # Esecuzione della prima query sul database per cercare i record presenti
+    query1 = "SELECT presenze FROM cinetel4.anagrafica_film WHERE presenze=%s ORDER BY presenze ASC ;"  # Modifica il nome della tabella e delle colonne in base al tuo database
+    cnx = connection()
+    cur = cnx.cursor()
+    cur.execute(query1, [str(Affluenza_Totale)])
+    result1 = cur.fetchall()
+
+    if not result1:
+        return 'Il campo della Affluenza_Totale non è presente nel db ma è presente nel file Excel'
+    else:
+        return 'Il campo della Affluenza_Totale è presente nel db ma assente nel file Excel'
+
+
+def cerca_Incasso_Totale(Incasso_Totale):
+    # Esecuzione della prima query sul database per cercare i record presenti
+    query1 = "SELECT incasso FROM cinetel4.anagrafica_film  WHERE incasso ORDER BY incasso ASC  ;"  # Modifica il nome della tabella e delle colonne in base al tuo database
+    cnx = connection()
+    cur = cnx.cursor()
+    cur.execute(query1, [str(Incasso_Totale)])
+    result1 = cur.fetchall()
+
+    if not result1:
+        return 'Il campo della Incasso_Totale non è presente nel db ma è presente nel file Excel'
+    else:
+        return 'Il campo della Incasso_Totale è presente nel db ma assente nel file Excel'
+
+
+from texttable import Texttable
+
+# creare la tabella
+t = Texttable()
+
+# definire le larghezze delle colonne
+col_widths = [15, 10, 20, 10, 20, 10, 15, 10, 10, 10, 20, 15, 15, 15]
+
+# impostare le larghezze delle colonne
+t.set_cols_width(col_widths)
+
+# aggiungere la riga dell'header
+header = ['Nome Comune', 'Presente', 'Denominazione', 'Presente', 'Titolo', 'Presente', 'Data', 'Presente', 'Capienza',
+          'Presente', 'Affluenza_Totale', 'Presente', 'Incasso_Totale', 'Presente']
+t.add_row(header)
+
+# # crea una lista vuota per gli oggetti JSON
+# json_list = dict()
+#
+# result = list()
+#
+# # aggiungere le righe dei dati
+# for index, row in df_excel.iterrows():
+#     data_row = [row['Comune'], cerca_citta(row['Comune']),
+#             row['Denominazione'].split('-')[0], cerca_denominazione(row['Denominazione']),
+#             row['titolo'], cerca_titolo(row['titolo']),
+#             row['Data'], cerca_data(row['Data']),
+#             row['Capienza'], cerca_capienza(row['Capienza'], row['Denominazione']),
+#             row['Affluenza_Totale'], cerca_Affluenza_Totale(row['Affluenza_Totale']),
+#             row['Incasso_Totale'], cerca_Affluenza_Totale(row['Incasso_Totale'])]
+#     t.add_row(data_row)
+#
+#
+#
+#     data_dict = {
+#         'Comune': row['Comune'],
+#         'Comune_cercato': cerca_citta(row['Comune']),
+#         'Denominazione': row['Denominazione'].split('-')[0],
+#         'Denominazione_cercata': cerca_denominazione(row['Denominazione']),
+#         'Titolo': row['titolo'],
+#         'Titolo_cercato': cerca_titolo(row['titolo']),
+#         'Data': row['Data'],
+#         'Data_cercata': cerca_data(row['Data']),
+#         'Capienza': row['Capienza'],
+#         'Capienza_cercata': cerca_capienza(row['Capienza'], row['Denominazione']),
+#         'Affluenza_Totale': row['Affluenza_Totale'],
+#         'Affluenza_Totale_cercata': cerca_Affluenza_Totale(row['Affluenza_Totale']),
+#         'Incasso_Totale': row['Incasso_Totale'],
+#         'Incasso_Totale_cercato': cerca_Affluenza_Totale(row['Incasso_Totale'])
+#     }
+#     result.append(data_dict)
+#
+
+
+# # stampare la tabella
+#     print(data_dict)
+#
+# json_list['result'] = result
+
+# with open('nuovooò+è.txt', 'w', encoding='utf-8') as c:
+#     c.write(t.draw())
+
+from flask import Flask, jsonify, render_template, request
+from flask_cors import CORS
+
+app = Flask(__name__)
+cors = CORS(app)
+
+@app.route('/', methods=['POST'])
+def hello():
+    f = request.files['static_file']
+    f.save('test.xls')
+    df_test = pd.read_excel('test.xls')
+    #print(df_test)
+    # Distinte_Periodo_10_Settembre-16_Settembre_2020.xls
+    # crea una lista vuota per gli oggetti JSON
+    json_list = dict()
+
+    result = list()
+
+    # aggiungere le righe dei dati
+    for index, row in df_test.iterrows():
+        # data_row = [row['Comune'], cerca_citta(row['Comune']),
+        #             row['Denominazione'].split('-')[0], cerca_denominazione(row['Denominazione']),
+        #             row['titolo'], cerca_titolo(row['titolo']),
+        #             row['Data'], cerca_data(row['Data']),
+        #             row['Capienza'], cerca_capienza(row['Capienza'], row['Denominazione']),
+        #             row['Affluenza_Totale'], cerca_Affluenza_Totale(row['Affluenza_Totale']),
+        #             row['Incasso_Totale'], cerca_Affluenza_Totale(row['Incasso_Totale'])]
+        # t.add_row(data_row)
+
+        data_dict = {
+            'Comune': row['Comune'],
+            'Comune_cercato': cerca_citta(row['Comune']),
+            'Denominazione': row['Denominazione'].split('-')[0],
+            'Denominazione_cercata': cerca_denominazione(row['Denominazione']),
+            'Titolo': row['titolo'],
+            'Titolo_cercato': cerca_titolo(row['titolo']),
+            'Data': row['Data'],
+            'Data_cercata': cerca_data(row['Data']),
+            'Capienza': row['Capienza'],
+            'Capienza_cercata': cerca_capienza(row['Capienza'], row['Denominazione']),
+            'Affluenza_Totale': row['Affluenza_Totale'],
+            'Affluenza_Totale_cercata': cerca_Affluenza_Totale(row['Affluenza_Totale']),
+            'Incasso_Totale': row['Incasso_Totale'],
+            'Incasso_Totale_cercato': cerca_Affluenza_Totale(row['Incasso_Totale'])
+        }
+        result.append(data_dict)
+
+        # stampare la tabella
+        #print(data_dict)
+
+    json_list['result'] = result
+
+    with open('nuovooò+è.txt', 'w', encoding='utf-8') as c:
+        c.write(t.draw())
+
+    return jsonify(json_list)
+
+
+
+
+
+
+
+
+
+
+
+@app.route('/api')
+def api():
+    return jsonify({'message': 'Benvenuti nella nostra API REST!'})
+
+@app.route('/button')
+def button():
+    return render_template('button.html')
+
+@app.route('/ciao', methods=['POST'])
+def ciao():
+    return "Ciaooooo Cleooo"
+
+if __name__ == '__main__':
+    app.run(host="localhost", port="5000", debug=True)
+
